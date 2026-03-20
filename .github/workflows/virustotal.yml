@@ -31,10 +31,23 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Scan installer with VirusTotal
+        id: vt
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VT_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          update_release_body: true
           files: |
             *.exe
+
+      - name: Append VirusTotal link to release notes
+        if: steps.vt.outputs.analysis != ''
+        run: |
+          VT_URL=$(echo "${{ steps.vt.outputs.analysis }}" | cut -d= -f2-)
+          CURRENT_BODY=$(gh release view ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --json body --jq .body)
+          NEW_BODY="${CURRENT_BODY}
+
+---
+🛡️ **VirusTotal scan:** ${VT_URL}"
+          gh release edit ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --notes "${NEW_BODY}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
