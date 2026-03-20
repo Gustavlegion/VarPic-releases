@@ -26,8 +26,7 @@ jobs:
           fi
 
       - name: Download installer from release
-        run: |
-          gh release download ${{ steps.tag.outputs.tag }} \n            --repo ${{ github.repository }} \n            --pattern "*.exe"
+        run: gh release download ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --pattern "*.exe"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
