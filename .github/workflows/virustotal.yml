@@ -2,7 +2,7 @@ name: VirusTotal Scan
 
 on:
   release:
-    types: [published]
+    types: [published, edited]
   workflow_dispatch:
     inputs:
       tag:
@@ -61,6 +61,11 @@ jobs:
         run: |
           VT_URL=$(echo "${{ steps.vt_release.outputs.analysis }}${{ steps.vt_manual.outputs.analysis }}" | cut -d= -f2-)
           CURRENT_BODY=$(gh release view ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --json body --jq .body)
+          # Не дублювати посилання якщо вже є
+          if echo "$CURRENT_BODY" | grep -q "VirusTotal scan:"; then
+            echo "VirusTotal link already present, skipping."
+            exit 0
+          fi
           NEW_BODY=$(printf '%s\n\n\xf0\x9f\x9b\xa1\xef\xb8\x8f **VirusTotal scan:** %s' "$CURRENT_BODY" "$VT_URL")
           gh release edit ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --notes "$NEW_BODY"
         env:
