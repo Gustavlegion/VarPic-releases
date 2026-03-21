@@ -25,12 +25,14 @@ jobs:
             echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Download installer from release
-        run: gh release download ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --pattern "*.exe"
+      - name: Download assets from release
+        run: |
+          gh release download ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --pattern "*.exe" || true
+          gh release download ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --pattern "*.deb" || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Scan installer with VirusTotal
+      - name: Scan with VirusTotal
         id: vt
         uses: crazy-max/ghaction-virustotal@v4
         with:
@@ -38,6 +40,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           files: |
             *.exe
+            *.deb
 
       - name: Append VirusTotal link to release notes
         if: steps.vt.outputs.analysis != ''
