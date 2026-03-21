@@ -25,15 +25,18 @@ jobs:
             echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Download assets from release
+      - name: Download assets (for workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
         run: |
           gh release download ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --pattern "*.exe" || true
           gh release download ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --pattern "*.deb" || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Scan with VirusTotal
-        id: vt
+      # Release mode: action scans release assets directly, files = regex filter
+      - name: Scan with VirusTotal (release event)
+        if: github.event_name == 'release'
+        id: vt_release
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VT_API_KEY }}
@@ -41,10 +44,22 @@ jobs:
           files: |
             .*\.(exe|deb)$
 
+      # Manual mode: files downloaded above, files = glob
+      - name: Scan with VirusTotal (manual)
+        if: github.event_name == 'workflow_dispatch'
+        id: vt_manual
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            *.exe
+            *.deb
+
       - name: Append VirusTotal link to release notes
-        if: steps.vt.outputs.analysis != ''
+        if: steps.vt_release.outputs.analysis != '' || steps.vt_manual.outputs.analysis != ''
         run: |
-          VT_URL=$(echo "${{ steps.vt.outputs.analysis }}" | cut -d= -f2-)
+          VT_URL=$(echo "${{ steps.vt_release.outputs.analysis }}${{ steps.vt_manual.outputs.analysis }}" | cut -d= -f2-)
           CURRENT_BODY=$(gh release view ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --json body --jq .body)
           NEW_BODY=$(printf '%s\n\n\xf0\x9f\x9b\xa1\xef\xb8\x8f **VirusTotal scan:** %s' "$CURRENT_BODY" "$VT_URL")
           gh release edit ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --notes "$NEW_BODY"
