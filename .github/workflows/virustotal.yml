@@ -66,12 +66,13 @@ jobs:
             --repo ${{ github.repository }} --json body --jq .body)
           CLEAN_BODY=$(echo "$CURRENT_BODY" | grep -v "VirusTotal scan")
 
-          # Будуємо новий VT блок — по одному рядку на файл
+          # Action повертає записи через кому: "file1=url1,file2=url2"
+          # Розбиваємо на рядки, будуємо VT блок
           VT_LINES=""
           while IFS='=' read -r filename url; do
             [ -z "$filename" ] && continue
             VT_LINES="${VT_LINES}\n🛡️ **VirusTotal scan (${filename}):** ${url}"
-          done <<< "$ANALYSIS"
+          done <<< "$(echo "$ANALYSIS" | tr ',' '\n')"
 
           NEW_BODY=$(printf '%s\n%b' "$CLEAN_BODY" "$VT_LINES")
           gh release edit ${{ steps.tag.outputs.tag }} \
