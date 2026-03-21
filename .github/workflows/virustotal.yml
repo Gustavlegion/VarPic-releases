@@ -39,8 +39,7 @@ jobs:
           vt_api_key: ${{ secrets.VT_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           files: |
-            *.exe
-            *.deb
+            .*\.(exe|deb)$
 
       - name: Append VirusTotal link to release notes
         if: steps.vt.outputs.analysis != ''
