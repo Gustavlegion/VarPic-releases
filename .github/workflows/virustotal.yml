@@ -56,17 +56,25 @@ jobs:
             *.exe
             *.deb
 
-      - name: Append VirusTotal link to release notes
+      - name: Update VirusTotal links in release notes
         if: steps.vt_release.outputs.analysis != '' || steps.vt_manual.outputs.analysis != ''
         run: |
-          VT_URL=$(echo "${{ steps.vt_release.outputs.analysis }}${{ steps.vt_manual.outputs.analysis }}" | cut -d= -f2-)
-          CURRENT_BODY=$(gh release view ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --json body --jq .body)
-          # Не дублювати посилання якщо вже є
-          if echo "$CURRENT_BODY" | grep -q "VirusTotal scan:"; then
-            echo "VirusTotal link already present, skipping."
-            exit 0
-          fi
-          NEW_BODY=$(printf '%s\n\n\xf0\x9f\x9b\xa1\xef\xb8\x8f **VirusTotal scan:** %s' "$CURRENT_BODY" "$VT_URL")
-          gh release edit ${{ steps.tag.outputs.tag }} --repo ${{ github.repository }} --notes "$NEW_BODY"
+          ANALYSIS="${{ steps.vt_release.outputs.analysis }}${{ steps.vt_manual.outputs.analysis }}"
+
+          # Отримуємо поточний текст notes та прибираємо старі VT рядки
+          CURRENT_BODY=$(gh release view ${{ steps.tag.outputs.tag }} \
+            --repo ${{ github.repository }} --json body --jq .body)
+          CLEAN_BODY=$(echo "$CURRENT_BODY" | grep -v "VirusTotal scan")
+
+          # Будуємо новий VT блок — по одному рядку на файл
+          VT_LINES=""
+          while IFS='=' read -r filename url; do
+            [ -z "$filename" ] && continue
+            VT_LINES="${VT_LINES}\n🛡️ **VirusTotal scan (${filename}):** ${url}"
+          done <<< "$ANALYSIS"
+
+          NEW_BODY=$(printf '%s\n%b' "$CLEAN_BODY" "$VT_LINES")
+          gh release edit ${{ steps.tag.outputs.tag }} \
+            --repo ${{ github.repository }} --notes "$NEW_BODY"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
