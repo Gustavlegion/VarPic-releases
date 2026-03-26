@@ -88,7 +88,15 @@ jobs:
           steps.vt_exe_manual.outputs.analysis != '' ||
           steps.vt_deb_manual.outputs.analysis != ''
         run: |
-          ANALYSIS="${{ steps.vt_exe_release.outputs.analysis }}${{ steps.vt_deb_release.outputs.analysis }}${{ steps.vt_exe_manual.outputs.analysis }}${{ steps.vt_deb_manual.outputs.analysis }}"
+          EXE_REL="${{ steps.vt_exe_release.outputs.analysis }}"
+          DEB_REL="${{ steps.vt_deb_release.outputs.analysis }}"
+          EXE_MAN="${{ steps.vt_exe_manual.outputs.analysis }}"
+          DEB_MAN="${{ steps.vt_deb_manual.outputs.analysis }}"
+          ANALYSIS=""
+          for part in "$EXE_REL" "$DEB_REL" "$EXE_MAN" "$DEB_MAN"; do
+            [ -z "$part" ] && continue
+            [ -z "$ANALYSIS" ] && ANALYSIS="$part" || ANALYSIS="$ANALYSIS,$part"
+          done
 
           # Отримуємо поточний текст notes та прибираємо старі VT рядки
           CURRENT_BODY=$(gh release view ${{ steps.tag.outputs.tag }} \
