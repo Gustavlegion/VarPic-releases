@@ -33,22 +33,34 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Release mode: action scans release assets directly, files = regex filter
-      - name: Scan with VirusTotal (release event)
+      # Scan EXE separately so its output is always captured
+      - name: Scan EXE with VirusTotal (release event)
         if: github.event_name == 'release'
-        id: vt_release
+        id: vt_exe_release
         continue-on-error: true
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VT_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           files: |
-            .*\.(exe|deb)$
+            .*\.exe$
 
-      # Manual mode: files downloaded above, files = glob
-      - name: Scan with VirusTotal (manual)
+      # Scan DEB separately — 409 here won't affect EXE outputs
+      - name: Scan DEB with VirusTotal (release event)
+        if: github.event_name == 'release'
+        id: vt_deb_release
+        continue-on-error: true
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            .*\.deb$
+
+      # Manual mode: scan EXE
+      - name: Scan EXE with VirusTotal (manual)
         if: github.event_name == 'workflow_dispatch'
-        id: vt_manual
+        id: vt_exe_manual
         continue-on-error: true
         uses: crazy-max/ghaction-virustotal@v4
         with:
@@ -56,12 +68,27 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           files: |
             *.exe
+
+      # Manual mode: scan DEB
+      - name: Scan DEB with VirusTotal (manual)
+        if: github.event_name == 'workflow_dispatch'
+        id: vt_deb_manual
+        continue-on-error: true
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
             *.deb
 
       - name: Update VirusTotal links in release notes
-        if: steps.vt_release.outputs.analysis != '' || steps.vt_manual.outputs.analysis != ''
+        if: |
+          steps.vt_exe_release.outputs.analysis != '' ||
+          steps.vt_deb_release.outputs.analysis != '' ||
+          steps.vt_exe_manual.outputs.analysis != '' ||
+          steps.vt_deb_manual.outputs.analysis != ''
         run: |
-          ANALYSIS="${{ steps.vt_release.outputs.analysis }}${{ steps.vt_manual.outputs.analysis }}"
+          ANALYSIS="${{ steps.vt_exe_release.outputs.analysis }}${{ steps.vt_deb_release.outputs.analysis }}${{ steps.vt_exe_manual.outputs.analysis }}${{ steps.vt_deb_manual.outputs.analysis }}"
 
           # Отримуємо поточний текст notes та прибираємо старі VT рядки
           CURRENT_BODY=$(gh release view ${{ steps.tag.outputs.tag }} \
