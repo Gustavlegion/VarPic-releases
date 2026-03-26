@@ -37,6 +37,7 @@ jobs:
       - name: Scan with VirusTotal (release event)
         if: github.event_name == 'release'
         id: vt_release
+        continue-on-error: true
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VT_API_KEY }}
@@ -48,6 +49,7 @@ jobs:
       - name: Scan with VirusTotal (manual)
         if: github.event_name == 'workflow_dispatch'
         id: vt_manual
+        continue-on-error: true
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VT_API_KEY }}
