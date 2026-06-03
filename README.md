@@ -9,7 +9,7 @@
 ## Requirements
 
 - Windows 10 / 11 (64-bit)
-- ~250 MB free disk space
+- ~2GB free disk space
 
  (Linux)                                                                                                          
   - Ubuntu 20.04 або новіше (64-bit)
